@@ -33,10 +33,12 @@ class FirewallManager():
         log.debug("input_chain")
         # TODO Añadir que mande aquí todos los puertos protegidos, o todas las conexiones si se protege todo
         # create a protocol rule that gates the chain?
-        protocol_rule = iptc.Rule() # *
+        protocol_rule = iptc.Rule(chain="c-lock") # *
+        log.debug("new rule")
         protocol_rule.protocol = protocol
+        log.debug("set protocol")
         # Apuntar INPUT a c-lock
-        protocol_rule.target = iptc.Target(protocol_rule, "c-lock")
+        protocol_rule.target = iptc.Target(protocol_rule, "INPUT")
         log.debug("protocol configured")
         log.debug(protocol_rule)
         input_chain.insert_rule(protocol_rule, position=len(input_chain.rules))
