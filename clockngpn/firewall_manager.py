@@ -30,6 +30,7 @@ class FirewallManager():
 
         # TODO ¿Debería venir desde ACCEPT?
         input_chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "INPUT")
+        log.debug("input_chain")
         # TODO Añadir que mande aquí todos los puertos protegidos, o todas las conexiones si se protege todo
         # create a protocol rule that gates the chain?
         protocol_rule = iptc.Rule() # *
@@ -38,7 +39,7 @@ class FirewallManager():
         protocol_rule.target = iptc.Target(protocol_rule, "c-lock")
         input_chain.insert_rule(protocol_rule, position=len(input_chain.rules))
 
-        log.debug("input_chain")
+        log.debug("insert_rule")
 
         # c-lock config
         # create a c-lock chain used for filtering
