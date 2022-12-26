@@ -67,7 +67,7 @@ class PortManager():
 
     def find_port(self, port):
         for secret in self._port_lists.keys():
-            if self._port_lists[secret].port_list[0] == port:
+            if self._port_lists[secret][0] == port:
                 return dict(next=self._port_lists[secret][1], n=1, secret=secret)
         return None
 
