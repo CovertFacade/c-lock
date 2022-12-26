@@ -7,7 +7,7 @@
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/junquera/c-lock.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/junquera/c-lock/alerts/)
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/junquera/c-lock.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/junquera/c-lock/context:python)
 
-A TOTP based next generation port knocking service. Every time slot, it generates a sequence of ports that must be *knocked* (in a correct order) before the final port (it have been designed for protecting a SSH service) becames opened.
+A TOTP based next generation port knocking service. Every time slot, it generates a sequence of ports that must be *knocked* (in a correct order) before the final port (it have been designed for protecting a SSH service) becomes opened.
 
 <!-- https://dashboard.moovly.com -->
 
@@ -43,17 +43,17 @@ A TOTP based next generation port knocking service. Every time slot, it generate
 
 ### System dependencies
 
-This is the software with wich I have worked:
+This is the software with which I have worked:
 
 - `python 3.x`
 
 - `iptables >= v1.6`
 
-It has been tested in *Ubuntu 16.04* and *Debian 9*, but should work with any other system with theese systems installed.
+It has been tested in *Ubuntu 16.04* and *Debian 9*, but should work with any other system with these systems installed.
 
 ### Software dependencies
 
-As it is just an alpha version, it has no currently an automated installer, because until it comes debugged and improved, it shouldnt have yet integration with the system.
+As it is just an alpha version, it has no currently an automated installer, because until it comes debugged and improved, it shouldn't have yet integration with the system.
 
 Because `python-cryptography` is needed for some dependencies, it must be installed before anything else: [Building cryptography on linux](https://cryptography.io/en/latest/installation/#building-cryptography-on-linux)
 
@@ -192,7 +192,7 @@ This is the server where the client points:
 
 ## Contributing
 
-By now, and until I finish a first stable version, I want to control the code. The best way of contribute to this project is apporting ideas and reviewing code. Any help is welcome!
+By now, and until I finish a first stable version, I want to control the code. The best way of contribute to this project is reporting ideas and reviewing code. Any help is welcome!
 
 For example, its obvious that I need help with documentation images, design, logo... :blush:
 

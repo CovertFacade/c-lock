@@ -8,11 +8,10 @@ import iptc
 
 log = logging.getLogger(__name__)
 
-
 # GUIDE: https://github.com/ldx/python-iptables
 class FirewallManager():
 
-    def __init__(self):
+    def __init__(self, protocols):
 
         self.backup()
 
@@ -28,17 +27,19 @@ class FirewallManager():
 
 
         # TODO ¿Debería venir desde ACCEPT?
-        chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "INPUT")
+        inputChain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "INPUT")
         # TODO Añadir que mande aquí todos los puertos protegidos, o todas las conexiones si se protege todo
-        rule = iptc.Rule() # *
-        rule.protocol = "tcp"
+        # create a protocol rule that gates the chain?
+        protocolRule = iptc.Rule() # *
+        protocolRule.protocol = protocols[0]
         # Apuntar INPUT a c-lock
-        rule.target = iptc.Target(rule, "c-lock")
-        chain.insert_rule(rule, position=len(chain.rules))
+        protocolRule.target = iptc.Target(protocolRule, "c-lock")
+        inputChain.insert_rule(protocolRule, position=len(inputChain.rules))
 
 
         # c-lock config
-        chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "c-lock")
+        # create a c-lock chain used for filtering
+        clockChain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "c-lock")
 
         '''
         TODO 1b53c7b5-55d7-4834-9719-1ef86a7bfe12
@@ -49,33 +50,33 @@ class FirewallManager():
             DROP (PROTECTED_PORTS)
         '''
         # Drop all the rest
-        rule = iptc.Rule()
-        rule.protocol = "tcp"
-        rule.target = iptc.Target(rule, "DROP")
-        chain.insert_rule(rule)
+        dropRule = iptc.Rule()
+        dropRule.protocol = protocols[0]
+        dropRule.target = iptc.Target(dropRule, "DROP")
+        clockChain.insert_rule(dropRule)
 
-        # Accept all established
-        rule = iptc.Rule()
-        rule.protocol = "tcp"
-        rule.target = iptc.Target(rule, "ACCEPT")
-        match = iptc.Match(rule, "state")
-        match.state = "RELATED,ESTABLISHED"
-        rule.add_match(match)
-        chain.insert_rule(rule)
+        # # Accept all established
+        # rule = iptc.Rule()
+        # rule.protocol = protocol
+        # rule.target = iptc.Target(rule, "ACCEPT")
+        # match = iptc.Match(rule, "state")
+        # match.state = "RELATED,ESTABLISHED"
+        # rule.add_match(match)
+        # chain.insert_rule(rule)
 
         # TODO Accept all OUTPUT
 
         # Accept all localhost connections
         rule = iptc.Rule() # *
-        rule.protocol = "tcp"
+        rule.protocol = protocols[0]
         rule.src = "127.0.0.1"
         rule.target = iptc.Target(rule, "ACCEPT")
-        chain.insert_rule(rule)
+        clockChain.insert_rule(rule)
 
         # TODO Not working right
         # Accept all output connections
         # rule = iptc.Rule()
-        # rule.protocol = "tcp"
+        # rule.protocol = protocols[0]
         # rule.target = iptc.Target(rule, "ACCEPT")
         # rule.src = "127.0.0.1"
         # chain.insert_rule(rule)
@@ -87,8 +88,8 @@ class FirewallManager():
     #     chain = iptc.Chain(table, "c-lock-unmanaged")
     #
     #     rule = iptc.Rule() # *
-    #     rule.protocol = "tcp"
-    #     match = iptc.Match(rule, "tcp")
+    #     rule.protocol = protocols[0]
+    #     match = iptc.Match(rule, protocols[0])
     #     match.dport = "%d" % port
     #     rule.add_match(match)
     #
@@ -99,17 +100,17 @@ class FirewallManager():
 
 
     # if !open then close
-    def gen_rule(self, d_port=None, s_address=None, open=True):
+    def gen_rule(self, d_port=None, s_address=None, open=True, protocol="udp"):
 
         rule = iptc.Rule() # *
-        rule.protocol = "tcp"
+        rule.protocol = protocol
 
         if s_address:
             rule.src = s_address
 
         if d_port:
             print(d_port)
-            match = iptc.Match(rule, "tcp")
+            match = iptc.Match(rule, protocol)
             match.dport = "%d" % d_port
             rule.add_match(match)
 
@@ -123,24 +124,24 @@ class FirewallManager():
 
         return rule
 
-    def open(self, d_port=None, s_address=None):
+    def open(self, protocol="udp", d_port=None, s_address=None):
         # TODO Evitar insertar reglas repetidas
         table = iptc.Table(iptc.Table.FILTER)
 
         chain = iptc.Chain(table, "c-lock")
 
-        rule = self.gen_rule(d_port, s_address, open=True)
+        rule = self.gen_rule(d_port, s_address, open=True, protocol=protocol)
 
         chain.insert_rule(rule)
 
         return rule
 
-    def close(self, d_port=None, s_address=None):
+    def close(self, d_port=None, s_address=None, protocol="udp"):
         table = iptc.Table(iptc.Table.FILTER)
 
         chain = iptc.Chain(table, "c-lock")
 
-        rule = self.gen_rule(d_port, s_address, open=False)
+        rule = self.gen_rule(d_port, s_address, open=False, protocol=protocol)
 
         chain.insert_rule(rule)
 
@@ -166,7 +167,7 @@ class FirewallManager():
 
         chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "INPUT")
         rule = iptc.Rule()
-        rule.protocol = "tcp"
+        rule.protocol = protocol
         rule.target = iptc.Target(rule, "c-lock")
 
         # TODO Ver como usar esto sin borrar otras reglas del firewall

@@ -1,3 +1,5 @@
+import string
+
 import clockngpn.totp as totp
 from clockngpn.proc_worker import Event, Broker, ProcWorkerEvent
 from clockngpn.ttp import TocTocPorts, TocTocPortsWorker
@@ -12,6 +14,8 @@ import signal
 import argparse
 
 log = logging.getLogger(__name__)
+secret_file = ""
+secret_list = []
 
 
 def check_environment():
@@ -28,9 +32,22 @@ def check_environment():
         else:
             raise Exception("Error, la variable XTABLES_LIBDIR está mal configurada")
 
+def read_config(secret_file):
+    secrets = []
+    log.warning('Rereading config file %s' % secret_file)
+    with open(secret_file, 'r') as f:
+        for line in f:
+            secrets.append(line.strip())
+    return secrets
+
+
+def reread_config(signum, *args):
+    secret_list.clear()
+    secret_list.extend(read_config(secret_file))
+
 
 # TODO Sacar a una clase y hacer el main con arg_parser
-def main_server(secret, slot, address, ports, opened):
+def main_server(slot, address, ports, opened, protocol):
 
     try:
         check_environment()
@@ -38,7 +55,8 @@ def main_server(secret, slot, address, ports, opened):
         log.error(e)
         exit(-1)
 
-    log.debug("Secret: %s" % secret)
+    for secret in secret_list:
+        log.debug("Secret: %s" % secret)
 
     from clockngpn.port_manager import PortManagerWorker, PortManager
     from clockngpn.firewall_manager import FirewallManager, FirewallManagerWorker
@@ -54,7 +72,7 @@ def main_server(secret, slot, address, ports, opened):
     fwmw = FirewallManagerWorker(fwmq, bq, fwm=fwm)
 
     for port in opened:
-        fwm.open(port)
+        fwm.open(port, protocol)
 
     pmq = Queue()
     b.add_client(pmq)
@@ -64,7 +82,7 @@ def main_server(secret, slot, address, ports, opened):
     ttpq = Queue()
     b.add_client(ttpq)
     ttp = TocTocPorts(secret, destination=ports)
-    ttpw = TocTocPortsWorker(ttpq, bq, ttp)
+    ttpw = TocTocPortsWorker(ttpq, bq, ttp, secret_list)
 
     fwmw.start()
     pmw.start()
@@ -93,12 +111,14 @@ def main_server(secret, slot, address, ports, opened):
         if fwmw.is_alive() or pmw.is_alive() or ttpw.is_alive() or b.is_alive():
             exit(0)
 
+
     signal.signal(signal.SIGINT, end)
     signal.signal(signal.SIGSEGV, end)
     signal.signal(signal.SIGFPE, end)
     signal.signal(signal.SIGABRT, end)
     signal.signal(signal.SIGBUS, end)
     signal.signal(signal.SIGILL, end)
+    signal.signal(signal.SIGHUP, reread_config)
     # TODO Clase orquestador
 
 
@@ -117,8 +137,10 @@ def main():
     parser.add_argument('-ts', '--time-slot', dest='slot', default=30, type=int, help='Time slot for TOTP')
     parser.add_argument('-a', '--address', default='0.0.0.0', help="Address to protect")
     parser.add_argument('-s', '--secret', help="Secret part of TOTP")
+    parser.add_argument('-sf', '--secret-file', default='knocksecrets', help="File which contains multiple TOTP secrets")
     parser.add_argument('-p', '--protected-ports', type=int, default=[], action='append', help="Port which has to be protected")
     parser.add_argument('-o', '--opened-ports', type=int, default=[], action='append', help="Port which should be opened")
+    parser.add_argument('-q', '--opened-protocol', default="udp", help="Protocol which should be opened")
     parser.add_argument('--gen-secret', help="Generate random secret", action='store_true')
     parser.add_argument('--clean-firewall', help="Clean firewall configuration (e.g., after a bad close)", action='store_true')
     parser.add_argument('--log-level', default="DEBUG", help="Log level")
@@ -143,7 +165,7 @@ def main():
             log.error(e)
             exit(-1)
 
-        from clockng.firewall_manager import FirewallManager
+        from clockngpn.firewall_manager import FirewallManager
 
         FirewallManager().clean_firewall()
 
@@ -156,29 +178,43 @@ def main():
         print("TOTP generated secret: %s" % i_secret)
         print(otp_bidi.generate())
 
+    elif args.secret_file:
+        global secret_file
+        secret_file = args.secret_file
+        # secrets from file
+        try:
+            secret_list.clear()
+            secret_list.extend(read_config(secret_file))
+        except Exception:
+            log.warning('Failed reading secret_file %s' % secret_file)
+
     elif args.secret:
         i_secret = args.secret
-
         try:
-            secret = totp.web_secret_2_bytes(i_secret)
-        except Exception as e:
+            secret_list.append(totp.web_secret_2_bytes(i_secret))
+        except Exception:
             log.error("Bad secret: Remember secret must be b32")
             return
 
-        slot = args.slot
-
-        address = args.address
-        ports = args.protected_ports if args.protected_ports else []
-
-        opened = args.opened_ports
-
-        main_server(secret, slot, address, ports, opened)
-
-
+    if len(secret_list) > 0:
+        launch_server(args)
     else:
-        log.error("A secret is required to start")
+        log.error("At least one secret is required to start")
         parser.print_help()
         return
+
+def launch_server(args):
+
+    slot = args.slot
+
+    address = args.address
+    ports = args.protected_ports if args.protected_ports else []
+
+    opened = args.opened_ports
+    opened_protocol = args.opened_protocol
+
+    main_server(slot, address, ports, opened, opened_protocol)
+
 
 if __name__ == '__main__':
     main()

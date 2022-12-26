@@ -7,7 +7,7 @@ import logging
 
 log = logging.getLogger(__name__)
 
-from scapy.all import sniff, IP, TCP
+from scapy.all import sniff, IP, TCP, UDP
 
 class PortManager():
 
@@ -16,6 +16,7 @@ class PortManager():
         self._sockets = []
         self._threads = []
         self._address = address
+        self._port_lists = {}
         self._unmanaged_ports = unmanaged_ports
 
         try:
@@ -35,7 +36,7 @@ class PortManager():
 
         # TODO Ver por qué no termina el hilo...
         myfilter = '(tcp[13]&2!=0 and tcp[13]&16==0)'
-        sniff(prn=lambda pkt: self.notify_connection(pkt[IP].src, pkt[TCP].dport), stop_filter=lambda x: evt.is_set(), filter=myfilter, store=0)
+        sniff(prn=lambda pkt: self.notify_connection(pkt[IP].src, pkt[UDP].dport), stop_filter=lambda x: evt.is_set(), filter=myfilter, store=0)
 
         log.info("nor_wait_nor_listen")
 
@@ -46,27 +47,31 @@ class PortManager():
             addr_info = self._active[addr]
             if port == addr_info['next']:
                 next_n = addr_info['n'] + 1
-                if len(self._port_list) <= next_n:
+                if len(self._port_lists[addr_info.secret]) <= next_n:
                     self.last_port(addr)
                     del self._active[addr]
                 else:
                     addr_info['n'] = next_n
-                    addr_info['next'] = self._port_list[next_n]
+                    addr_info['next'] = self._port_lists[addr_info.secret][next_n]
                     self._active[addr] = addr_info
             else:
                 if port not in self._unmanaged_ports:
                     del self._active[addr]
         else:
-            if self._port_list[0] == port:
-                self._active[addr] = dict(next=self._port_list[1], n=1)
+            self._active[addr] = self.find_port(port)
+
+    def find_port(self, port):
+        for secret in self._port_lists.key():
+            if self._port_lists[secret].port_list[0] == port:
+                return dict(next=list.port_list[1], n=1, secret=secret)
+        return None
 
     def last_port(self, addr):
         log.info("%s reached last port" % (addr))
 
-    # TODO Rename to reset
-    def open(self, port_list):
+    def reset(self, secret, port_list):
         self._active = {}
-        self._port_list = port_list
+        self._port_lists.update({secret: port_list})
 
     def close_thread(self, evt):
         try:
@@ -115,7 +120,8 @@ class PortManagerWorker(ProcWorker):
 
         if evt.get_id() == TocTocPortsEvent.NEW_SLOT:
             port_list = evt.get_value()['port_list'].get_values()
-            self._pm.open(port_list)
+            secret = evt.get_value()['secret']
+            self._pm.reset(secret, port_list)
 
         if evt.get_id() == PortManagerEvent.PROTECT_PORT:
             pass

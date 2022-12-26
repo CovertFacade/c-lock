@@ -13,12 +13,13 @@ logging.basicConfig(
 
 
 def touch(address, port):
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.settimeout(0)
     try:
         log.info("Touching %d" % port)
-        s.connect((address, port))
-        s.close()
+        s.sendto(bytes(port.to, "utf-8"), (address, port))
+        #s.connect((address, port))
+        #s.close()
     except Exception as e:
         log.debug(e)
         pass

@@ -14,7 +14,7 @@ def gen_ports_from_pin(pin, n_ports):
 
     values = []
 
-    min_port = 2**10 # 1024
+    min_port = 2**11 # 2048
     max_port = 2**16 # 65536
 
     for i in range(n_ports):
@@ -113,10 +113,10 @@ class TocTocPorts():
 
         return PortList(portsp)
 
-    def get_actual(self):
+    def get_actual(self, secret):
 
         tca = self.last()
-        vala = totp.totp(self._secret, tca)
+        vala = totp.totp(secret, tca)
         portsa = gen_ports_from_pin(vala, self._n_ports)
 
         return PortList(portsa)
@@ -157,9 +157,10 @@ class TocTocPorts():
 
 class TocTocPortsWorker(ProcWorker):
 
-    def __init__(self, i_q, o_q, ttp):
+    def __init__(self, i_q, o_q, ttp, secret_list):
         super(TocTocPortsWorker, self).__init__(i_q, o_q)
         self._ttp = ttp
+        self.secret_list = secret_list
         threading.Thread(target=self.work).start()
 
     # TODO Cerrar este thread
@@ -167,7 +168,8 @@ class TocTocPortsWorker(ProcWorker):
 
         while not self._end_evt.is_set():
             # TODO Tal vez no desde aquí, pero hay que lanzar un evento con los puertos reservados
-            self._o.put(Event(TocTocPortsEvent.NEW_SLOT, {'port_list': self._ttp.get_actual()}))
+            for secret in self._secret_list:
+              self._o.put(Event(TocTocPortsEvent.NEW_SLOT, {'secret': secret, 'port_list': self._ttp.get_actual(secret)}))
             next_t = self._ttp.next()
             log.debug("Next slot in %ds" % next_t)
             self._end_evt.wait(next_t)
