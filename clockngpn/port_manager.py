@@ -48,7 +48,7 @@ class PortManager():
         log.info("nor_wait_nor_listen")
 
     def notify_connection(self, addr, port, pkt):
-        log.debug("udp packet from %s to port %s length %s length %s" % (addr, port, pkt.len, pkt.payload.mysummary()))
+        log.debug("udp packet from %s to port %s length %s length %s" % (addr, port, pkt.len, pkt[8..pkt.len].decode('utf-8')))
         # TODO Hacer esto con métodos con bloqueos (@lock)
         if addr in self._active:
             addr_info = self._active[addr]
