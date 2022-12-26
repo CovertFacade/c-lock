@@ -98,7 +98,7 @@ def main_server(slot, address, ports, opened, protocol):
         ttpq = Queue()
         b.add_client(ttpq)
         ttp = TocTocPorts(secret, slot=slot, destination=ports)
-        ttpw[secret] = TocTocPortsWorker(ttpq, bq, ttp, secret)
+        ttpw[secret] = TocTocPortsWorker(ttpq, bq, ttp)
         ttpw[secret].start()
 
     b.start()
