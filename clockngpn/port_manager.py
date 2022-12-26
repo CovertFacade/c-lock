@@ -42,13 +42,13 @@ class PortManager():
         # myfilter = '(tcp[13]&2!=0 and tcp[13]&16==0)'
         #myfilter = '(udp[2]&5!=0)'
         sniff(lfilter=lambda pkt: pkt.haslayer(UDP) and 2048 <= pkt[UDP].dport <= 65536,
-              prn=lambda pkt: self.notify_connection(pkt[IP].src, pkt[UDP].dport),
+              prn=lambda pkt: self.notify_connection(pkt[IP].src, pkt[UDP].dport, pkt[UDP].len),
               stop_filter=lambda x: evt.is_set(), store=0)
 
         log.info("nor_wait_nor_listen")
 
-    def notify_connection(self, addr, port):
-        log.debug("udp packet from %s to port %s" % (addr, port))
+    def notify_connection(self, addr, port, len):
+        log.debug("udp packet from %s to port %s length %s" % (addr, port, len))
         # TODO Hacer esto con métodos con bloqueos (@lock)
         if addr in self._active:
             addr_info = self._active[addr]
