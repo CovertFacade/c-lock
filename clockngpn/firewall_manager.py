@@ -42,7 +42,7 @@ class FirewallManager():
             # maybe also put the address of our outgoing interface?
             jump_rule.target = iptc.Target(jump_rule, "ceelock", goto=True)
             output_chain.insert_rule(jump_rule)
-            log.debug(jump_rule.mysummary())
+            log.debug(jump_rule)
         # create a protocol rule that gates the chain?
 
         # ceelock config
