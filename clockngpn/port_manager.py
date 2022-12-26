@@ -2,12 +2,13 @@ import socket, sys
 from struct import *
 import threading
 from .proc_worker import ProcWorker, Event, bypass, ProcWorkerEvent, TocTocPortsEvent, PortManagerEvent
+from scapy.all import sniff
+from scapy.layers.inet import IP, TCP, UDP
 
 import logging
 
 log = logging.getLogger(__name__)
 
-from scapy.all import sniff, IP, TCP, UDP
 
 class PortManager():
 
@@ -26,9 +27,9 @@ class PortManager():
             self._threads.append(evt)
             t.start()
 
-        except socket.error:
+        except socket.error as msg:
             # TODO Send END
-            print( 'Socket could not be created. Error Code : ' + str(msg[0]) + ' Message ' + msg[1])
+            log.error( 'Socket could not be created. Error Code : ' + str(msg[0]) + ' Message ' + msg[1])
             sys.exit()
 
     def wait_and_listen(self, evt):
