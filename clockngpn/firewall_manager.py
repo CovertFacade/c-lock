@@ -57,11 +57,12 @@ class FirewallManager():
         else:
             DROP (PROTECTED_PORTS)
         '''
+
         # Drop all the rest
-        drop_rule = iptc.Rule()
-        drop_rule.protocol = protocol
-        drop_rule.target = iptc.Target(drop_rule, "DROP")
-        clock_chain.insert_rule(drop_rule)
+        # drop_rule = iptc.Rule()
+        # drop_rule.protocol = protocol
+        # drop_rule.target = iptc.Target(drop_rule, "DROP")
+        # clock_chain.insert_rule(drop_rule)
 
         log.debug("clock_chain drop")
         # # Accept all established
@@ -175,21 +176,29 @@ class FirewallManager():
 
         table = iptc.Table(iptc.Table.FILTER)
 
-        chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "INPUT")
-        rule = iptc.Rule()
-        rule.protocol = self.protocol
-        rule.target = iptc.Target(rule, "ceelock")
+        input_chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "INPUT")
+        ceelock_jump_rule = iptc.Rule()
+        ceelock_jump_rule.protocol = self.protocol
+        ceelock_jump_rule.target = iptc.Target(ceelock_jump_rule, "ceelock")
 
         # TODO Ver como usar esto sin borrar otras reglas del firewall
-        while rule in chain.rules:
-            log.info("Deleting rule")
-            log.info(chain)
-            log.info(rule)
-            chain.delete_rule(rule)
 
-        chain = iptc.Chain(table, "ceelock")
-        chain.flush()
-        chain.delete()
+        retry = 5
+        while retry > 0 and ceelock_jump_rule in input_chain.rules:
+            try:
+                log.info("Deleting rule")
+                log.info(input_chain)
+                log.info(ceelock_jump_rule)
+                input_chain.delete_rule(ceelock_jump_rule)
+                retry -= 1
+                time.sleep(retry * 1)
+            except Exception as e:
+                input_chain.flush()
+                log.error(e)
+
+        ceelock_chain = iptc.Chain(table, "ceelock")
+        ceelock_chain.flush()
+        ceelock_chain.delete()
 
     def finish(self):
         self.clean_firewall()
