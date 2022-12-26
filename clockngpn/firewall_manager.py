@@ -68,13 +68,8 @@ class FirewallManager():
 
         log.debug("clock_chain drop")
         # # Accept all established
-        # rule = iptc.Rule()
-        # rule.protocol = protocol
-        # rule.target = iptc.Target(rule, "ACCEPT")
-        # match = iptc.Match(rule, "state")
-        # match.state = "RELATED,ESTABLISHED"
-        # rule.add_match(match)
-        # chain.insert_rule(rule)
+
+
 
         # TODO Accept all OUTPUT
 
@@ -123,7 +118,7 @@ class FirewallManager():
 
         if s_port:
             log.info(s_port)
-            match = iptc.Match(rule, protocol)
+            match = rule.create_match(protocol)
             match.sport = "%d" % s_port
             rule.add_match(match)
 
