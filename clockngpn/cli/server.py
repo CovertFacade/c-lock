@@ -44,7 +44,7 @@ def read_config(secret_file):
     log.warning('Rereading config file %s' % secret_file)
     with open(secret_file, 'r') as f:
         for line in f:
-            secrets.append(line.strip())
+            secrets.append(totp.web_secret_2_bytes(line.strip()))
     return secrets
 
 
