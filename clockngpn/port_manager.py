@@ -1,11 +1,12 @@
-import socket, sys
-from struct import *
+import logging
+import socket
+import sys
 import threading
-from .proc_worker import ProcWorker, Event, bypass, ProcWorkerEvent, TocTocPortsEvent, PortManagerEvent
+
 from scapy.all import sniff
 from scapy.layers.inet import IP, TCP, UDP
 
-import logging
+from .proc_worker import ProcWorker, Event, bypass, ProcWorkerEvent, TocTocPortsEvent, PortManagerEvent
 
 log = logging.getLogger(__name__)
 
@@ -29,15 +30,17 @@ class PortManager():
 
         except socket.error as msg:
             # TODO Send END
-            log.error( 'Socket could not be created. Error Code : ' + str(msg[0]) + ' Message ' + msg[1])
+            log.error('Socket could not be created. Error Code : ' + str(msg[0]) + ' Message ' + msg[1])
             sys.exit()
 
     def wait_and_listen(self, evt):
         log.info("wait_and_listen")
 
         # TODO Ver por qué no termina el hilo...
-        myfilter = '(tcp[13]&2!=0 and tcp[13]&16==0)'
-        sniff(prn=lambda pkt: self.notify_connection(pkt[IP].src, pkt[UDP].dport), stop_filter=lambda x: evt.is_set(), filter=myfilter, store=0)
+        # myfilter = '(tcp[13]&2!=0 and tcp[13]&16==0)'
+        myfilter = '(udp[2]&5!=0)'
+        sniff(lfilter=lambda pkt: pkt.haslayer(UDP),
+              prn=lambda pkt: self.notify_connection(pkt[IP].src, pkt[UDP].dport), stop_filter=lambda x: evt.is_set(), filter=myfilter, store=0)
 
         log.info("nor_wait_nor_listen")
 
@@ -111,7 +114,7 @@ class PortManagerWorker(ProcWorker):
         self._o.put(Event(PortManagerEvent.NEW_CONNECTION, {'port': port, 'address': addr}))
 
     def last_port(self, address):
-            self._o.put(Event(PortManagerEvent.LAST_PORT, dict(address=address)))
+        self._o.put(Event(PortManagerEvent.LAST_PORT, dict(address=address)))
 
     def process_evt(self, evt):
         super(PortManagerWorker, self).process_evt(evt)
