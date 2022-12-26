@@ -29,8 +29,8 @@ class FirewallManager():
 
 
         # TODO ¿Debería venir desde ACCEPT?
-        input_chain = iptc.Chain(table, "OUTPUT")
-        input_chain = input_chain if input_chain else table.create_chain("OUTPUT")
+        output_chain = iptc.Chain(table, "OUTPUT")
+        output_chain = output_chain if output_chain else table.create_chain("OUTPUT")
         log.debug("output_chain")
         # TODO Añadir que mande aquí todos los puertos protegidos, o todas las conexiones si se protege todo
         # don't send from the protected port
@@ -38,9 +38,11 @@ class FirewallManager():
             jump_rule = table.create_rule()
             jump_rule.protocol = protocol
             jump_rule.port = port
+            log.debug("tryign to add port to rule %s" % port)
             # maybe also put the address of our outgoing interface?
             jump_rule.target = iptc.Target(jump_rule, "ceelock", goto=True)
-            input_chain.insert_rule(jump_rule)
+            output_chain.insert_rule(jump_rule)
+            log.debug(jump_rule.mysummary())
         # create a protocol rule that gates the chain?
 
         # ceelock config
