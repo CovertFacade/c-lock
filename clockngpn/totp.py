@@ -24,8 +24,8 @@ def hmac(K, m):
     o_key_pad = k.translate(opad) # xor(k, k.translate(opad))
     i_key_pad = k.translate(ipad) # xor(k, k.translate(ipad))
 
-    inner = hash_alg(i_key_pad)
-    outer = hash_alg(o_key_pad)
+    inner = hash_alg(str(i_key_pad).encode('utf-8'))
+    outer = hash_alg(str(o_key_pad).encode('utf-8'))
 
     inner.update(m)
     outer.update(inner.digest())
