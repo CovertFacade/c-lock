@@ -19,6 +19,7 @@ def touch(address, port):
     try:
         log.info("Touching %d" % port)
         s.sendto(bytes(port, "utf-8"), (address, port))
+        s.close()
         #s.connect((address, port))
         #s.close()
     except Exception as e:
