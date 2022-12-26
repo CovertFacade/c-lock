@@ -6,6 +6,7 @@ import threading
 from scapy.all import sniff
 from scapy.layers.inet import IP, TCP, UDP
 
+from . import ttp
 from .proc_worker import ProcWorker, Event, bypass, ProcWorkerEvent, TocTocPortsEvent, PortManagerEvent
 
 log = logging.getLogger(__name__)
@@ -39,9 +40,10 @@ class PortManager():
 
         # TODO Ver por qué no termina el hilo...
         # myfilter = '(tcp[13]&2!=0 and tcp[13]&16==0)'
-        myfilter = '(udp[2]&5!=0)'
-        sniff(lfilter=lambda pkt: pkt.haslayer(UDP),
-              prn=lambda pkt: self.notify_connection(pkt[IP].src, pkt[UDP].dport), stop_filter=lambda x: evt.is_set(), filter=myfilter, store=0)
+        #myfilter = '(udp[2]&5!=0)'
+        sniff(lfilter=lambda pkt: pkt.haslayer(UDP) and 2048 <= pkt[UDP].dport <= 65536,
+              prn=lambda pkt: self.notify_connection(pkt[IP].src, pkt[UDP].dport),
+              stop_filter=lambda x: evt.is_set(), store=0)
 
         log.info("nor_wait_nor_listen")
 
@@ -63,7 +65,9 @@ class PortManager():
                 if port not in self._unmanaged_ports:
                     del self._active[addr]
         else:
-            self._active[addr] = self.find_port(port)
+            seeking_port = self.find_port(port)
+            if seeking_port:
+                self._active[addr] = seeking_port
 
     def find_port(self, port):
         for secret in self._port_lists.keys():
