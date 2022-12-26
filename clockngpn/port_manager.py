@@ -66,9 +66,9 @@ class PortManager():
             self._active[addr] = self.find_port(port)
 
     def find_port(self, port):
-        for secret in self._port_lists.key():
+        for secret in self._port_lists.keys():
             if self._port_lists[secret].port_list[0] == port:
-                return dict(next=list.port_list[1], n=1, secret=secret)
+                return dict(next=self._port_lists[secret][1], n=1, secret=secret)
         return None
 
     def last_port(self, addr):
