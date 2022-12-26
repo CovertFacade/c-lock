@@ -38,7 +38,7 @@ class FirewallManager():
         log.debug("new rule")
         protocol_rule.protocol = protocol
         # Apuntar INPUT a ceelock
-        protocol_rule.target = protocol_rule.create_target("ACCEPT")
+        protocol_rule.target = protocol_rule.create_target("ceelock", goto=True)
         log.debug("protocol configured")
         log.debug(protocol_rule)
         input_chain.insert_rule(protocol_rule, position=len(input_chain.rules))
