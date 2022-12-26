@@ -37,8 +37,6 @@ class FirewallManager():
         for port in protected_ports:
             jump_rule = table.create_rule()
             jump_rule.protocol = protocol
-            jump_rule.src = "0.0.0.0:%s" % port
-            log.debug("tryign to add port to rule %s" % port)
             # maybe also put the address of our outgoing interface?
             jump_rule.target = iptc.Target(jump_rule, "ceelock", goto=True)
             output_chain.insert_rule(jump_rule)
