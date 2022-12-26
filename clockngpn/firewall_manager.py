@@ -30,7 +30,10 @@ class FirewallManager():
 
         # TODO ¿Debería venir desde ACCEPT?
         table = iptc.Table(iptc.Table.FILTER)
-        input_chain = table.create_chain("INPUT")
+        try:
+            input_chain = table.create_chain("INPUT")
+        except Exception:
+            log.debug("INPUT exists!")
         log.debug("input_chain")
         # TODO Añadir que mande aquí todos los puertos protegidos, o todas las conexiones si se protege todo
         # create a protocol rule that gates the chain?
