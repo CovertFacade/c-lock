@@ -29,7 +29,6 @@ class FirewallManager():
 
 
         # TODO ¿Debería venir desde ACCEPT?
-        table = iptc.Table(iptc.Table.FILTER)
         try:
             input_chain = table.create_chain("INPUT")
         except Exception:
@@ -37,7 +36,7 @@ class FirewallManager():
         log.debug("input_chain")
         # TODO Añadir que mande aquí todos los puertos protegidos, o todas las conexiones si se protege todo
         # create a protocol rule that gates the chain?
-        protocol_rule = iptc.Rule()
+        protocol_rule = input_chain.create_rule()
         log.debug("new rule")
         protocol_rule.protocol = protocol
         # Apuntar INPUT a ceelock
