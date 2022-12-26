@@ -171,7 +171,7 @@ class FirewallManager():
 
         table = iptc.Table(iptc.Table.FILTER)
 
-        input_chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "INPUT")
+        output_chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "OUTPUT")
         ceelock_jump_rule = iptc.Rule()
         ceelock_jump_rule.protocol = self.protocol
         ceelock_jump_rule.target = iptc.Target(ceelock_jump_rule, "ceelock")
@@ -179,16 +179,16 @@ class FirewallManager():
         # TODO Ver como usar esto sin borrar otras reglas del firewall
 
         retry = 5
-        while retry > 0 and ceelock_jump_rule in input_chain.rules:
+        while retry > 0 and ceelock_jump_rule in output_chain.rules:
             try:
                 log.info("Deleting rule")
-                log.info(input_chain)
+                log.info(output_chain)
                 log.info(ceelock_jump_rule)
-                input_chain.delete_rule(ceelock_jump_rule)
+                output_chain.delete_rule(ceelock_jump_rule)
                 retry -= 1
                 time.sleep(retry * 1)
             except Exception as e:
-                input_chain.flush()
+                output_chain.flush()
                 log.error(e)
 
         ceelock_chain = iptc.Chain(table, "ceelock")
