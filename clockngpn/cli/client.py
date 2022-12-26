@@ -14,7 +14,7 @@ logging.basicConfig(
 
 def touch(address, port):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.bind('0.0.0.0', 6666)
+    s.bind(('0.0.0.0', 6666))
     s.settimeout(0)
     try:
         log.info("Touching %d" % port)
