@@ -182,6 +182,9 @@ class FirewallManager():
 
         # TODO Ver como usar esto sin borrar otras reglas del firewall
         while rule in chain.rules:
+            log.info("Deleting rule")
+            log.info(chain)
+            log.info(rule)
             chain.delete_rule(rule)
 
         chain = iptc.Chain(table, "ceelock")
