@@ -115,8 +115,8 @@ class PortManagerWorker(ProcWorker):
         self._pm.notify_connection = bypass(self._pm.notify_connection, self.notify_connection)
         self._pm.last_port = bypass(self._pm.last_port, self.last_port)
 
-    def notify_connection(self, addr, port):
-        self._o.put(Event(PortManagerEvent.NEW_CONNECTION, {'port': port, 'address': addr}))
+    def notify_connection(self, addr, port, len):
+        self._o.put(Event(PortManagerEvent.NEW_CONNECTION, {'port': port, 'address': addr,  'len': len}))
 
     def last_port(self, address):
         self._o.put(Event(PortManagerEvent.LAST_PORT, dict(address=address)))
