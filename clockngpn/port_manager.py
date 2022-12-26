@@ -5,6 +5,7 @@ import threading
 
 from scapy.all import sniff
 from scapy.layers.inet import IP, TCP, UDP
+from scapy.utils import hexdump
 
 from . import ttp
 from .proc_worker import ProcWorker, Event, bypass, ProcWorkerEvent, TocTocPortsEvent, PortManagerEvent
@@ -49,7 +50,7 @@ class PortManager():
 
     def notify_connection(self, addr, port, pkt):
         log.debug("udp packet from %s to port %s length %s" % (addr, port, pkt.len))
-        log.debug(pkt.hexdump())
+        log.debug(hexdump(pkt))
         # TODO Hacer esto con métodos con bloqueos (@lock)
         if addr in self._active:
             addr_info = self._active[addr]
