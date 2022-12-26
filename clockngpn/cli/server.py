@@ -79,7 +79,7 @@ def main_server(slot, address, ports, opened, protocol):
 
     fwmq = Queue()
     b.add_client(fwmq)
-    fwm = FirewallManager(protocol)
+    fwm = FirewallManager(ports, protocol)
     fwmw = FirewallManagerWorker(fwmq, bq, fwm=fwm)
 
     for port in opened:

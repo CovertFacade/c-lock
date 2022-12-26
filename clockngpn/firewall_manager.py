@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 # GUIDE: https://github.com/ldx/python-iptables
 class FirewallManager():
 
-    def __init__(self, protocol):
+    def __init__(self, protected_ports, protocol):
 
         self.protocol = protocol
         self.backup()
@@ -29,25 +29,24 @@ class FirewallManager():
 
 
         # TODO ¿Debería venir desde ACCEPT?
-        input_chain = iptc.Chain(table, "INPUT")
-        input_chain = input_chain if input_chain else table.create_chain("INPUT")
-        log.debug("input_chain")
+        input_chain = iptc.Chain(table, "OUTPUT")
+        input_chain = input_chain if input_chain else table.create_chain("OUTPUT")
+        log.debug("output_chain")
         # TODO Añadir que mande aquí todos los puertos protegidos, o todas las conexiones si se protege todo
+        # don't send from the protected port
+        for port in protected_ports:
+            jump_rule = table.create_rule()
+            jump_rule.protocol = protocol
+            jump_rule.port = port
+            # maybe also put the address of our outgoing interface?
+            jump_rule.target = iptc.Target(jump_rule, "ceelock", goto=True)
+            input_chain.insert_rule(jump_rule)
         # create a protocol rule that gates the chain?
-        protocol_rule = table.create_rule()
-        log.debug("new rule")
-        protocol_rule.protocol = protocol
-        # Apuntar INPUT a ceelock
-        protocol_rule.target = protocol_rule.create_target("ceelock", goto=True)
-        log.debug("protocol configured")
-        log.debug(protocol_rule)
-        input_chain.insert_rule(protocol_rule, position=len(input_chain.rules))
-
-        log.debug("insert_rule")
 
         # ceelock config
         # create a ceelock chain used for filtering
         clock_chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "ceelock")
+        clock_chain.set_policy("DROP")
 
         '''
         TODO 1b53c7b5-55d7-4834-9719-1ef86a7bfe12
@@ -58,11 +57,13 @@ class FirewallManager():
             DROP (PROTECTED_PORTS)
         '''
 
-        # Drop all the rest
-        # drop_rule = iptc.Rule()
-        # drop_rule.protocol = protocol
-        # drop_rule.target = iptc.Target(drop_rule, "DROP")
-        # clock_chain.insert_rule(drop_rule)
+
+
+        # Drop all the rest - ceelock default rule drop all
+        drop_rule = iptc.Rule()
+        drop_rule.protocol = protocol
+        drop_rule.target = iptc.Target(drop_rule, "DROP")
+        clock_chain.insert_rule(drop_rule)
 
         log.debug("clock_chain drop")
         # # Accept all established
@@ -111,18 +112,18 @@ class FirewallManager():
 
 
     # if !open then close
-    def gen_rule(self, d_port=None, s_address=None, open=True, protocol="udp"):
+    def gen_rule(self, s_port=None, d_address=None, open=True, protocol="udp"):
 
         rule = iptc.Rule() # *
         rule.protocol = protocol
 
-        if s_address:
-            rule.src = s_address
+        if d_address:
+            rule.dst = d_address
 
-        if d_port:
-            log.info(d_port)
+        if s_port:
+            log.info(s_port)
             match = iptc.Match(rule, protocol)
-            match.dport = "%d" % d_port
+            match.sport = "%d" % s_port
             rule.add_match(match)
 
         rule.target = iptc.Target(rule, "ACCEPT" if open else "REJECT")
@@ -135,24 +136,24 @@ class FirewallManager():
 
         return rule
 
-    def open(self, protocol="udp", d_port=None, s_address=None):
+    def open(self, protocol="udp", d_port=None, d_address=None):
         # TODO Evitar insertar reglas repetidas
         table = iptc.Table(iptc.Table.FILTER)
 
         chain = iptc.Chain(table, "ceelock")
 
-        rule = self.gen_rule(d_port, s_address, open=True, protocol=protocol)
+        rule = self.gen_rule(d_port, d_address, open=True, protocol=protocol)
 
         chain.insert_rule(rule)
 
         return rule
 
-    def close(self, d_port=None, s_address=None, protocol="udp"):
+    def close(self, s_port=None, d_address=None, protocol="udp"):
         table = iptc.Table(iptc.Table.FILTER)
 
         chain = iptc.Chain(table, "ceelock")
 
-        rule = self.gen_rule(d_port, s_address, open=False, protocol=protocol)
+        rule = self.gen_rule(s_port, d_address, open=False, protocol=protocol)
 
         chain.insert_rule(rule)
 
@@ -345,7 +346,7 @@ class FirewallManagerWorker(ProcWorker):
     def open(self, port=None, s_address=None, caducity=-1, protected=False):
 
         # We protect this rule for allowing the user to connect on step change
-        r = self._fwm.gen_rule(port, s_address=s_address)
+        r = self._fwm.gen_rule(port, d_address=s_address)
 
         exist = self._rule_manager.exist_rule(r)
 
@@ -376,7 +377,7 @@ class FirewallManagerWorker(ProcWorker):
             # Usamos esto porque hemos determinado usar FT/SNIFF/O1
             if len(ports):
                 for port in ports:
-                    self.open(port, s_address=addr, caducity=30, protected=True)
+                    self.open(port, s_address=addr, caducity=300, protected=True)
             else:
                 # TODO Implementar esto si determinamos usar FT/SNIFF/O2
                 self.open(s_address=addr, caducity=30, protected=True)
