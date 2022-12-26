@@ -60,20 +60,28 @@ class PortList():
         self._actual = 0
 
 
+class MorePortsNeededException(Exception):
+    pass
+
+
+class TooManyPortsException(Exception):
+    pass
+
+
 class TocTocPorts():
 
-    def __init__(self, secret, slot=30, n_ports=4, destination=[]):
+    def __init__(self, secret, slot=30, n_ports=4, destination=None):
 
         self._secret = secret
         self._slot = slot
 
-        self._destination = destination
+        self._destination = destination if destination else []
 
         if n_ports < 1:
-            raise Exception("Error, at least %d ports needed" % 1)
+            raise MorePortsNeededException("Error, at least %d ports needed" % 1)
 
         if n_ports > 10:
-            raise Exception("Error, max ports: %d" % 10)
+            raise TooManyPortsException("Error, max ports: %d" % 10)
 
         self._n_ports = n_ports
 
@@ -102,7 +110,7 @@ class TocTocPorts():
         return t - remainder
 
     def get_all(self):
-        return {'p': self.get_prev(), 'a': self.get_actual(), 'n': self.get_next()}
+        return {'p': self.get_prev(), 'a': self.get_actual(self._secret), 'n': self.get_next()}
 
     def get_prev(self):
 
@@ -157,10 +165,10 @@ class TocTocPorts():
 
 class TocTocPortsWorker(ProcWorker):
 
-    def __init__(self, i_q, o_q, ttp, secret_list):
+    def __init__(self, i_q, o_q, ttp, secret):
         super(TocTocPortsWorker, self).__init__(i_q, o_q)
         self._ttp = ttp
-        self.secret_list = secret_list
+        self._secret = secret
         threading.Thread(target=self.work).start()
 
     # TODO Cerrar este thread
@@ -168,8 +176,7 @@ class TocTocPortsWorker(ProcWorker):
 
         while not self._end_evt.is_set():
             # TODO Tal vez no desde aquí, pero hay que lanzar un evento con los puertos reservados
-            for secret in self._secret_list:
-              self._o.put(Event(TocTocPortsEvent.NEW_SLOT, {'secret': secret, 'port_list': self._ttp.get_actual(secret)}))
+            self._o.put(Event(TocTocPortsEvent.NEW_SLOT, {'secret': self._secret, 'port_list': self._ttp.get_actual(self._secret)}))
             next_t = self._ttp.next()
             log.debug("Next slot in %ds" % next_t)
             self._end_evt.wait(next_t)

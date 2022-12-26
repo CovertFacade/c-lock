@@ -1,27 +1,33 @@
-import string
+import argparse
+import logging
+import os
+import signal
+import time
+from queue import Queue
 
 import clockngpn.totp as totp
+from clockngpn.bidi import OTPBidi
 from clockngpn.proc_worker import Event, Broker, ProcWorkerEvent
 from clockngpn.ttp import TocTocPorts, TocTocPortsWorker
-from queue import Queue
-import time
-import os
-import logging
-
-from clockngpn.bidi import OTPBidi
-
-import signal
-import argparse
 
 log = logging.getLogger(__name__)
 secret_file = ""
 secret_list = []
 
 
-def check_environment():
+class NeedsRootException(Exception):
+    "Raised when the program is not run as root"
+    pass
 
-    if not os.geteuid() == 0:
-        raise Exception("This program needs root for managing IPTABLES!")
+
+class BadXtablesException(Exception):
+    "Raised when xtables library is not found"
+    pass
+
+
+def check_environment():
+    if os.geteuid() != 0:
+        raise NeedsRootException("This program needs root for managing IPTABLES!")
 
     try:
         import iptc
@@ -30,7 +36,8 @@ def check_environment():
         if 'XTABLES_LIBDIR' not in os.environ:
             os.environ['XTABLES_LIBDIR'] = '/usr/lib/x86_64-linux-gnu/xtables'
         else:
-            raise Exception("Error, la variable XTABLES_LIBDIR está mal configurada")
+            raise BadXtablesException("Error, la variable XTABLES_LIBDIR está mal configurada")
+
 
 def read_config(secret_file):
     secrets = []
@@ -44,31 +51,35 @@ def read_config(secret_file):
 def reread_config(signum, *args):
     secret_list.clear()
     secret_list.extend(read_config(secret_file))
+    for secret in secret_list:
+        log.debug("Secret: %s" % secret)
+
+
+def has_alive_among(self, *threads):
+    for t in threads:
+        if t.is_alive():
+            return True
+    return False
 
 
 # TODO Sacar a una clase y hacer el main con arg_parser
 def main_server(slot, address, ports, opened, protocol):
-
     try:
         check_environment()
     except Exception as e:
         log.error(e)
         exit(-1)
 
-    for secret in secret_list:
-        log.debug("Secret: %s" % secret)
-
     from clockngpn.port_manager import PortManagerWorker, PortManager
     from clockngpn.firewall_manager import FirewallManager, FirewallManagerWorker
 
-    oq = Queue()
     bq = Queue()
 
-    b = Broker(bq, oq)
+    b = Broker(bq, Queue())
 
     fwmq = Queue()
     b.add_client(fwmq)
-    fwm = FirewallManager()
+    fwm = FirewallManager(protocol)
     fwmw = FirewallManagerWorker(fwmq, bq, fwm=fwm)
 
     for port in opened:
@@ -79,14 +90,17 @@ def main_server(slot, address, ports, opened, protocol):
     pm = PortManager(address, unmanaged_ports=opened)
     pmw = PortManagerWorker(pmq, bq, pm=pm)
 
-    ttpq = Queue()
-    b.add_client(ttpq)
-    ttp = TocTocPorts(secret, destination=ports)
-    ttpw = TocTocPortsWorker(ttpq, bq, ttp, secret_list)
-
     fwmw.start()
     pmw.start()
-    ttpw.start()
+
+    ttpw = {}
+    for secret in secret_list:
+        ttpq = Queue()
+        b.add_client(ttpq)
+        ttp = TocTocPorts(secret, slot=slot, destination=ports)
+        ttpw[secret] = TocTocPortsWorker(ttpq, bq, ttp, secret_list)
+        ttpw[secret].start()
+
     b.start()
 
     # TODO Refactor de este método
@@ -95,22 +109,16 @@ def main_server(slot, address, ports, opened, protocol):
         bq.put(Event(ProcWorkerEvent.END, None))
         retry = 0
         while retry <= 3:
-            if not fwmw.is_alive() and not pmw.is_alive() and not ttpw.is_alive() and not b.is_alive():
+            if not has_alive_among(fwmw, pmw, *ttpw.values(), b):
                 break
             time.sleep(retry * 1)
 
-        if fwmw.is_alive():
-            log.warning("Bad killing thread fwmw")
-        if pmw.is_alive():
-            log.warning("Bad killing thread pmw")
-        if ttpw.is_alive():
-            log.warning("Bad killing thread ttpw")
-        if b.is_alive():
-            log.warning("Bad killing thread broker")
+        for thread in (fwmw, pmw, *ttpw.values(), b):
+            if thread.is_alive():
+                log.warning('Thread %s is still alive' % thread)
 
-        if fwmw.is_alive() or pmw.is_alive() or ttpw.is_alive() or b.is_alive():
+        if has_alive_among(fwmw, pmw, *ttpw.values(), b):
             exit(0)
-
 
     signal.signal(signal.SIGINT, end)
     signal.signal(signal.SIGSEGV, end)
@@ -123,7 +131,6 @@ def main_server(slot, address, ports, opened, protocol):
 
 
 def main():
-
     log_levels = {
         'DEBUG': logging.DEBUG,
         'INFO': logging.INFO,
@@ -175,8 +182,8 @@ def main():
 
         otp_bidi = OTPBidi(i_secret)
 
-        print("TOTP generated secret: %s" % i_secret)
-        print(otp_bidi.generate())
+        log.info("TOTP generated secret: %s" % i_secret)
+        log.info(otp_bidi.generate())
 
     elif args.secret_file:
         global secret_file
@@ -201,10 +208,9 @@ def main():
     else:
         log.error("At least one secret is required to start")
         parser.print_help()
-        return
+
 
 def launch_server(args):
-
     slot = args.slot
 
     address = args.address

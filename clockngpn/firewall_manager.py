@@ -11,8 +11,9 @@ log = logging.getLogger(__name__)
 # GUIDE: https://github.com/ldx/python-iptables
 class FirewallManager():
 
-    def __init__(self, protocols):
+    def __init__(self, protocol):
 
+        self.protocol = protocol
         self.backup()
 
         log.debug("Starting FirewallManager")
@@ -22,24 +23,24 @@ class FirewallManager():
         # Crear chain
         try:
             table.create_chain("c-lock")
-        except Exception as e:
+        except Exception:
             log.debug("c-lock exists!")
 
 
         # TODO ¿Debería venir desde ACCEPT?
-        inputChain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "INPUT")
+        input_chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "INPUT")
         # TODO Añadir que mande aquí todos los puertos protegidos, o todas las conexiones si se protege todo
         # create a protocol rule that gates the chain?
-        protocolRule = iptc.Rule() # *
-        protocolRule.protocol = protocols[0]
+        protocol_rule = iptc.Rule() # *
+        protocol_rule.protocol = protocol
         # Apuntar INPUT a c-lock
-        protocolRule.target = iptc.Target(protocolRule, "c-lock")
-        inputChain.insert_rule(protocolRule, position=len(inputChain.rules))
+        protocol_rule.target = iptc.Target(protocol_rule, "c-lock")
+        input_chain.insert_rule(protocol_rule, position=len(input_chain.rules))
 
 
         # c-lock config
         # create a c-lock chain used for filtering
-        clockChain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "c-lock")
+        clock_chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "c-lock")
 
         '''
         TODO 1b53c7b5-55d7-4834-9719-1ef86a7bfe12
@@ -50,10 +51,10 @@ class FirewallManager():
             DROP (PROTECTED_PORTS)
         '''
         # Drop all the rest
-        dropRule = iptc.Rule()
-        dropRule.protocol = protocols[0]
-        dropRule.target = iptc.Target(dropRule, "DROP")
-        clockChain.insert_rule(dropRule)
+        drop_rule = iptc.Rule()
+        drop_rule.protocol = protocol
+        drop_rule.target = iptc.Target(drop_rule, "DROP")
+        clock_chain.insert_rule(drop_rule)
 
         # # Accept all established
         # rule = iptc.Rule()
@@ -68,15 +69,15 @@ class FirewallManager():
 
         # Accept all localhost connections
         rule = iptc.Rule() # *
-        rule.protocol = protocols[0]
+        rule.protocol = protocol
         rule.src = "127.0.0.1"
         rule.target = iptc.Target(rule, "ACCEPT")
-        clockChain.insert_rule(rule)
+        clock_chain.insert_rule(rule)
 
         # TODO Not working right
         # Accept all output connections
         # rule = iptc.Rule()
-        # rule.protocol = protocols[0]
+        # rule.protocol = protocol
         # rule.target = iptc.Target(rule, "ACCEPT")
         # rule.src = "127.0.0.1"
         # chain.insert_rule(rule)
@@ -88,8 +89,8 @@ class FirewallManager():
     #     chain = iptc.Chain(table, "c-lock-unmanaged")
     #
     #     rule = iptc.Rule() # *
-    #     rule.protocol = protocols[0]
-    #     match = iptc.Match(rule, protocols[0])
+    #     rule.protocol = protocol
+    #     match = iptc.Match(rule, protocol)
     #     match.dport = "%d" % port
     #     rule.add_match(match)
     #
@@ -109,7 +110,7 @@ class FirewallManager():
             rule.src = s_address
 
         if d_port:
-            print(d_port)
+            log.info(d_port)
             match = iptc.Match(rule, protocol)
             match.dport = "%d" % d_port
             rule.add_match(match)
@@ -167,7 +168,7 @@ class FirewallManager():
 
         chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "INPUT")
         rule = iptc.Rule()
-        rule.protocol = protocol
+        rule.protocol = self.protocol
         rule.target = iptc.Target(rule, "c-lock")
 
         # TODO Ver como usar esto sin borrar otras reglas del firewall
@@ -290,7 +291,7 @@ class RuleManager(threading.Thread):
             if rule_data:
                 if rule_data['caducity'] < 0:
                     continue
-                elif rule_data['caducity'] < ((time.time() - rule_data['timestamp'])):
+                elif rule_data['caducity'] < (time.time() - rule_data['timestamp']):
                     self.delete_rule(rule_id)
 
     # If `hard`, the protected rules are deleted too
