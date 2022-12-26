@@ -29,10 +29,8 @@ class FirewallManager():
 
 
         # TODO ¿Debería venir desde ACCEPT?
-        try:
-            input_chain = table.create_chain("INPUT")
-        except Exception:
-            log.debug("INPUT exists!")
+        input_chain = table.find_chain("INPUT")
+        input_chain = input_chain if input_chain else table.create_chain("INPUT")
         log.debug("input_chain")
         # TODO Añadir que mande aquí todos los puertos protegidos, o todas las conexiones si se protege todo
         # create a protocol rule that gates the chain?
