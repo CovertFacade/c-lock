@@ -42,7 +42,7 @@ class PortManager():
         # TODO Ver por qué no termina el hilo...
         # myfilter = '(tcp[13]&2!=0 and tcp[13]&16==0)'
         #myfilter = '(udp[2]&5!=0)'
-        sniff(lfilter=lambda pkt: pkt.haslayer(IP) and pkt.haslayer(UDP) and 6666 == pkt[UDP].sport and 2048 <= pkt[UDP].dport <= 65536 and pkt[IP].dst == '47.51.224.109',
+        sniff(lfilter=lambda pkt: pkt.haslayer(IP) and pkt.haslayer(UDP) and 6666 == pkt[UDP].sport,
               prn=lambda pkt: self.notify_connection(pkt[IP].src, pkt[UDP].dport, pkt[UDP]),
               stop_filter=lambda x: evt.is_set(), store=0)
 
