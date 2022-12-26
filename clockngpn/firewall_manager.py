@@ -25,6 +25,7 @@ class FirewallManager():
             table.create_chain("c-lock")
         except Exception:
             log.debug("c-lock exists!")
+        log.debug("create_chain")
 
 
         # TODO ¿Debería venir desde ACCEPT?
@@ -37,6 +38,7 @@ class FirewallManager():
         protocol_rule.target = iptc.Target(protocol_rule, "c-lock")
         input_chain.insert_rule(protocol_rule, position=len(input_chain.rules))
 
+        log.debug("input_chain")
 
         # c-lock config
         # create a c-lock chain used for filtering
@@ -56,6 +58,7 @@ class FirewallManager():
         drop_rule.target = iptc.Target(drop_rule, "DROP")
         clock_chain.insert_rule(drop_rule)
 
+        log.debug("clock_chain drop")
         # # Accept all established
         # rule = iptc.Rule()
         # rule.protocol = protocol
@@ -73,6 +76,7 @@ class FirewallManager():
         rule.src = "127.0.0.1"
         rule.target = iptc.Target(rule, "ACCEPT")
         clock_chain.insert_rule(rule)
+        log.debug("clock_chain insert")
 
         # TODO Not working right
         # Accept all output connections
