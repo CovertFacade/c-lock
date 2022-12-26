@@ -15,6 +15,7 @@ class PortManager():
 
     def __init__(self, address='0.0.0.0', unmanaged_ports=[]):
 
+        self._active = {}
         self._sockets = []
         self._threads = []
         self._address = address
