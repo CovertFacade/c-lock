@@ -48,7 +48,6 @@ class FirewallManager():
         # ceelock config
         # create a ceelock chain used for filtering
         clock_chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "ceelock")
-        clock_chain.set_policy("DROP")
 
         '''
         TODO 1b53c7b5-55d7-4834-9719-1ef86a7bfe12
