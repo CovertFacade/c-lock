@@ -36,9 +36,10 @@ class FirewallManager():
         protocol_rule = iptc.Rule(chain="c-lock") # *
         log.debug("new rule")
         protocol_rule.protocol = protocol
-        log.debug("set protocol")
+        log.debug("set protocol %s", protocol)
         # Apuntar INPUT a c-lock
-        protocol_rule.target = iptc.Target(protocol_rule, name="c-lock")
+        protocol_rule.create_target("c-lock")
+        #        protocol_rule.target = iptc.Target(protocol_rule, name="c-lock")
         log.debug("protocol configured")
         log.debug(protocol_rule)
         input_chain.insert_rule(protocol_rule, position=len(input_chain.rules))
