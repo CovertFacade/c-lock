@@ -22,9 +22,9 @@ class FirewallManager():
 
         # Crear chain
         try:
-            table.create_chain("c-lock")
+            table.create_chain("ceelock")
         except Exception:
-            log.debug("c-lock exists!")
+            log.debug("ceelock exists!")
         log.debug("create_chain")
 
 
@@ -34,20 +34,20 @@ class FirewallManager():
         log.debug("input_chain")
         # TODO Añadir que mande aquí todos los puertos protegidos, o todas las conexiones si se protege todo
         # create a protocol rule that gates the chain?
-        protocol_rule = iptc.Rule() # *
+        protocol_rule = iptc.Rule()
         log.debug("new rule")
         protocol_rule.protocol = protocol
-        # Apuntar INPUT a c-lock
-        protocol_rule.target = protocol_rule.create_target("c-lock")
+        # Apuntar INPUT a ceelock
+        protocol_rule.target = protocol_rule.create_target("ceelock")
         log.debug("protocol configured")
         log.debug(protocol_rule)
         input_chain.insert_rule(protocol_rule, position=len(input_chain.rules))
 
         log.debug("insert_rule")
 
-        # c-lock config
-        # create a c-lock chain used for filtering
-        clock_chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "c-lock")
+        # ceelock config
+        # create a ceelock chain used for filtering
+        clock_chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "ceelock")
 
         '''
         TODO 1b53c7b5-55d7-4834-9719-1ef86a7bfe12
@@ -95,7 +95,7 @@ class FirewallManager():
     #
     #     table = iptc.Table(iptc.Table.FILTER)
     #
-    #     chain = iptc.Chain(table, "c-lock-unmanaged")
+    #     chain = iptc.Chain(table, "ceelock-unmanaged")
     #
     #     rule = iptc.Rule() # *
     #     rule.protocol = protocol
@@ -138,7 +138,7 @@ class FirewallManager():
         # TODO Evitar insertar reglas repetidas
         table = iptc.Table(iptc.Table.FILTER)
 
-        chain = iptc.Chain(table, "c-lock")
+        chain = iptc.Chain(table, "ceelock")
 
         rule = self.gen_rule(d_port, s_address, open=True, protocol=protocol)
 
@@ -149,7 +149,7 @@ class FirewallManager():
     def close(self, d_port=None, s_address=None, protocol="udp"):
         table = iptc.Table(iptc.Table.FILTER)
 
-        chain = iptc.Chain(table, "c-lock")
+        chain = iptc.Chain(table, "ceelock")
 
         rule = self.gen_rule(d_port, s_address, open=False, protocol=protocol)
 
@@ -161,13 +161,13 @@ class FirewallManager():
 
         table = iptc.Table(iptc.Table.FILTER)
 
-        chain = iptc.Chain(table, "c-lock")
+        chain = iptc.Chain(table, "ceelock")
         chain.insert_rule(rule)
 
     def delete_rule(self, rule):
         table = iptc.Table(iptc.Table.FILTER)
 
-        chain = iptc.Chain(table, "c-lock")
+        chain = iptc.Chain(table, "ceelock")
         chain.delete_rule(rule)
 
     def clean_firewall(self):
@@ -178,13 +178,13 @@ class FirewallManager():
         chain = iptc.Chain(iptc.Table(iptc.Table.FILTER), "INPUT")
         rule = iptc.Rule()
         rule.protocol = self.protocol
-        rule.target = iptc.Target(rule, "c-lock")
+        rule.target = iptc.Target(rule, "ceelock")
 
         # TODO Ver como usar esto sin borrar otras reglas del firewall
         while rule in chain.rules:
             chain.delete_rule(rule)
 
-        chain = iptc.Chain(table, "c-lock")
+        chain = iptc.Chain(table, "ceelock")
         chain.flush()
         chain.delete()
 
