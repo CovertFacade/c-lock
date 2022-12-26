@@ -19,7 +19,7 @@ def hmac(K, m):
     else:
         k = K
 
-    k = k.ljust(block_size, "\u00")
+    k = k.ljust(block_size, '\0')
 
     o_key_pad = k.translate(opad) # xor(k, k.translate(opad))
     i_key_pad = k.translate(ipad) # xor(k, k.translate(ipad))
